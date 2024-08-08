@@ -1,10 +1,10 @@
 use anyhow::{bail, Context, Result};
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use colored::{ColoredString, Colorize};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::Deserialize;
-use tabled::{Table, Tabled};
+use tabled::{settings::Style, Table, Tabled};
 
 #[derive(Deserialize, Debug)]
 struct Node {
@@ -110,15 +110,37 @@ fn query_nodes() -> Result<SlurmNodes> {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+enum TableStyle {
+    Markdown,
+    Ascii,
+    Modern,
+}
+
+fn apply_style_to_table(style: Option<TableStyle>, table: &mut Table) -> &Table {
+    match style {
+        Some(TableStyle::Markdown) | None => table.with(Style::markdown()),
+        Some(TableStyle::Ascii) => table.with(Style::ascii()),
+        Some(TableStyle::Modern) => table.with(Style::modern()),
+    }
+}
+
 #[derive(Parser)]
-#[command(version, about)]
+#[command(
+    version,
+    about = "List generic resource (GRES) in a Slurm cluster by node"
+)]
 struct Cli {
-    // Name of the general resource
+    /// Name of the GRES, e.g. "gpu", "h100", "a6000"
     gres: String,
 
-    // Only show one partition
+    /// Selet which partition to show, e.g. "gpu", "interactive"
     #[arg(short, long)]
     partition: Option<String>,
+
+    /// Style of the printed table, by default "markdown"
+    #[arg(short, long, value_enum)]
+    style: Option<TableStyle>,
 }
 
 fn main() -> Result<()> {
@@ -137,7 +159,8 @@ fn main() -> Result<()> {
         .map(TableNode::from_node)
         .collect();
     let tabled_nodes = matched?;
-    let table = Table::new(tabled_nodes).to_string();
+    let mut table = Table::new(tabled_nodes);
+    apply_style_to_table(cli.style, &mut table);
     println!("{}", table);
     Ok(())
 }
