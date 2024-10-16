@@ -27,3 +27,10 @@ Pipe the output, preserving color:
 ```sh
 unbuffer lsgres gpu | grep -v gpu-b
 ```
+
+## License
+
+Licensed under either of
+[Apache 2.0](./LICENSES/Apache-2.0.txt) or [MIT](./LICENSES/MIT.txt) terms,
+at your option.
+
