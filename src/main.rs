@@ -132,8 +132,9 @@ impl GresStatus {
             });
         }
 
+        // Accept suffixes in parentheses like (S:0) or (IDX:N/A) and special characters in model names.
         static RE: Lazy<Regex> =
-            Lazy::new(|| Regex::new(r"(?P<model>\w+:\w+):(?P<count>\d+)").unwrap());
+            Lazy::new(|| Regex::new(r"^(?P<model>.+):(?P<count>\d+)(?:\([^)]*\))?$").unwrap());
         let caps = RE.captures(s).context("Matching Gres status failed!")?;
         Ok(Self {
             model: caps["model"].to_string(),
