@@ -118,6 +118,7 @@ struct SlurmNodes {
     nodes: Vec<Node>,
 }
 
+#[derive(Debug, PartialEq)]
 struct GresStatus {
     model: String,
     count: usize,
@@ -132,8 +133,9 @@ impl GresStatus {
             });
         }
 
+        // Accept suffixes in parentheses like (S:0) or (IDX:N/A) and special characters in model names.
         static RE: Lazy<Regex> =
-            Lazy::new(|| Regex::new(r"(?P<model>\w+:\w+):(?P<count>\d+)").unwrap());
+            Lazy::new(|| Regex::new(r"^(?P<model>.+):(?P<count>\d+)(?:\([^)]*\))?$").unwrap());
         let caps = RE.captures(s).context("Matching Gres status failed!")?;
         Ok(Self {
             model: caps["model"].to_string(),
@@ -324,6 +326,52 @@ mod tests {
         let gres = "cpu:2";
         let node = "cpu-node-1";
         assert_eq!(parse_gpu_allocation(gres, node), None);
+    }
+
+    #[test]
+    fn test_gres_status_from_str() {
+        assert_eq!(
+            GresStatus::from_str("gpu:h100_1g.12gb:28(S:0)").unwrap(),
+            GresStatus {
+                model: "gpu:h100_1g.12gb".to_string(),
+                count: 28,
+            }
+        );
+        assert_eq!(
+            GresStatus::from_str("gpu:h100:4(IDX:0-3)").unwrap(),
+            GresStatus {
+                model: "gpu:h100".to_string(),
+                count: 4,
+            }
+        );
+        assert_eq!(
+            GresStatus::from_str("gpu:h100:0(IDX:N/A)").unwrap(),
+            GresStatus {
+                model: "gpu:h100".to_string(),
+                count: 0,
+            }
+        );
+        assert_eq!(
+            GresStatus::from_str("gpu:a40:16").unwrap(),
+            GresStatus {
+                model: "gpu:a40".to_string(),
+                count: 16,
+            }
+        );
+        assert_eq!(
+            GresStatus::from_str("(null)").unwrap(),
+            GresStatus {
+                model: "".to_string(),
+                count: 0,
+            }
+        );
+        assert_eq!(
+            GresStatus::from_str("").unwrap(),
+            GresStatus {
+                model: "".to_string(),
+                count: 0,
+            }
+        );
     }
 
     #[test]
